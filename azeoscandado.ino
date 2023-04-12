@@ -21,19 +21,20 @@
 #define SENSITIVITY_BL V1
 #define SERVO_BL V2
 #define UNLOCK_DELAY_BL V3
+#define ALARM_DURATION_BL V4
 
 #define LOCK 0
 #define UNLOCK 180
 
 Servo myservo;
 const char auth[] = BLYNK_AUTH_TOKEN;
+
 unsigned long previousMillisDelay = 0;
-const long intervalDelay = 500;
-unsigned long unlockedMillisDelay = 0;
-long unlockedIntervalDelay = 5000;
+const long intervalDelay = 300;
+
 uint sensitivity = 3;
 uint sensor_power = 1;
-uint triggerCtr = 0;
+uint triggerCtr = 0, alarmDuration = 50, alarmCtr = 50;
 uint unlockedDelay = 3;
 bool isLocked = false, flag = true;
 
@@ -54,6 +55,13 @@ BLYNK_WRITE(SENSITIVITY_BL) {
 BLYNK_WRITE(UNLOCK_DELAY_BL) {
   unlockedDelay = param.asInt();
   Serial.println("UNLOCK_DELAY_BL: " + String(unlockedDelay));
+}
+
+BLYNK_WRITE(ALARM_DURATION_BL) {
+  int val = param.asInt();
+  alarmDuration = (val * 1000) / (intervalDelay - 10);
+  alarmCtr = alarmDuration;
+  Serial.println("ALARM_DURATION_BL: " + String(alarmDuration));
 }
 
 BLYNK_WRITE(SERVO_BL) {
@@ -123,24 +131,24 @@ void loop() {
   Blynk.run();
   if (sensor_power) {
     unsigned long currentMillis = millis();
-    unsigned long alarmCurrentMillis = millis();
     if (currentMillis - previousMillisDelay >= intervalDelay) {
       previousMillisDelay = currentMillis;
       int read = digitalRead(SENSOR_IN);
       if (read == HIGH) {
-        if (triggerCtr < 10) triggerCtr++;
-        Serial.print("Vibrating: ");
-      } else {
+        triggerCtr++;
+      } else if (triggerCtr < sensitivity) {
         if (triggerCtr > 0) triggerCtr--;
-        Serial.print("No vibration: ");
       }
-      Serial.println(triggerCtr);
+
       if (triggerCtr >= sensitivity) {
+        wakeAlarm();
+        if (alarmCtr > 0) {
+          alarmCtr--;
+        } else {
+          triggerCtr = 0;
+          alarmCtr = alarmDuration;
+        }
         Blynk.logEvent("alarm", "Your padlock has moved. This could mean that someone has tampered with it or tried to break it.");
-        digitalWrite(ALARM_PIN, HIGH);
-        delay(200);
-        digitalWrite(ALARM_PIN, LOW);
-        delay(50);
       } else {
         digitalWrite(ALARM_PIN, LOW);
       }
@@ -186,4 +194,11 @@ void lockServo() {
   Blynk.virtualWrite(SERVO_BL, HIGH);
   isLocked = true;
   Serial.println("locked");
+}
+
+void wakeAlarm() {
+  digitalWrite(ALARM_PIN, HIGH);
+  delay(250);
+  digitalWrite(ALARM_PIN, LOW);
+  delay(50);
 }
