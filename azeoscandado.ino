@@ -40,6 +40,7 @@ bool isLocked = false, flag = true;
 
 BLYNK_CONNECTED() {
   Blynk.syncAll();
+  Blynk.syncVirtual(LOCK_POWER_BL, SENSITIVITY_BL, ALARM_DURATION_BL, UNLOCK_DELAY_BL, ALARM_DURATION_BL);
 }
 
 BLYNK_WRITE(LOCK_POWER_BL) {
@@ -122,8 +123,6 @@ void setup() {
   pinMode(SENSOR_IN, INPUT);
   pinMode(HALL_PIN, INPUT);
   pinMode(ALARM_PIN, OUTPUT);
-  Blynk.virtualWrite(SENSITIVITY_BL, sensitivity);
-  Blynk.virtualWrite(LOCK_POWER_BL, HIGH);
 }
 
 void loop() {
