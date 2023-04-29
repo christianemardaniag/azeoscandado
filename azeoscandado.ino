@@ -45,7 +45,7 @@ BLYNK_CONNECTED() {
 
 BLYNK_WRITE(LOCK_POWER_BL) {
   sensor_power = param.asInt();
-  Serial.println("AL: " + String(sensor_power));
+  Serial.println("ALARM: " + String(sensor_power));
 }
 
 BLYNK_WRITE(SENSITIVITY_BL) {
@@ -67,6 +67,11 @@ BLYNK_WRITE(ALARM_DURATION_BL) {
 
 BLYNK_WRITE(SERVO_BL) {
   isLocked = param.asInt();
+  if (isLocked) {
+    unlockServo();
+  } else {
+    lockServo();
+  }
   Serial.println("SERVO: " + String(isLocked));
 }
 
@@ -135,10 +140,10 @@ void loop() {
       int read = digitalRead(SENSOR_IN);
       if (read == HIGH) {
         triggerCtr++;
+      Serial.println("TriggerCtr: " + String(triggerCtr));
       } else if (triggerCtr < sensitivity) {
         if (triggerCtr > 0) triggerCtr--;
       }
-
       if (triggerCtr >= sensitivity) {
         wakeAlarm();
         if (alarmCtr > 0) {
@@ -157,11 +162,12 @@ void loop() {
     triggerCtr = 0;
   }
 
-  hallSensor();
+  // hallSensor();
 }
 
 void hallSensor() {
-  bool sensorStatus = digitalRead(HALL_PIN);
+  bool sensorStatus = !digitalRead(HALL_PIN);
+  // 
   if (sensorStatus && flag) {
     lockServo();
     flag = false;
@@ -171,7 +177,7 @@ void hallSensor() {
       flag = true;
     }
     delay(unlockedDelay * 1000);
-    sensorStatus = digitalRead(HALL_PIN);
+    sensorStatus = !digitalRead(HALL_PIN);
     if (sensorStatus) {
       flag = true;
     }
